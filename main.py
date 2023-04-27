@@ -27,7 +27,6 @@ class shopifyScraper:
         return urls
 
     def detail_parser(self, html):
-        print(len(html))
         tree = HTMLParser(html)
         item = None
         items = []
