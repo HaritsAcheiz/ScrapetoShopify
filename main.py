@@ -14,12 +14,14 @@ class shopifyScraper:
     def fetch(self, url):
         client = Client()
         response = client.get(url)
+        print(response)
         client.close()
         return response.text
 
     def parser(self, html):
         tree = HTMLParser(html)
-        products = tree.css('html > body > div:nth-child(6) > div:nth-child(2) > main > div:nth-child(5) > div > div')
+        products = tree.css('html > body > div:nth-of-type(5) > div:nth-child(2) > main > div:nth-of-type(4) > div > div')
+        print(products)
         urls = []
         for product in products:
             url = self.base_url + product.css_first('a').attributes['href']
@@ -117,10 +119,13 @@ if __name__ == '__main__':
     cat_list = cat.split("\n")
     scraper = shopifyScraper(base_url=base_url, category=cat_list)
     urls = [f'https://www.80stees.com/a/search?q=christmas&page={str(page)}' for page in range(1,2)]
+    print(urls)
     htmls = [scraper.fetch(url) for url in urls]
     detail_urls = []
     for html in htmls:
+        print(html)
         detail_urls.extend(scraper.parser(html))
+    print(detail_urls)
     detail_htmls = [scraper.fetch(url) for url in detail_urls]
     data = [scraper.detail_parser(html) for html in detail_htmls]
     scraper.to_csv(data, filename='result.csv')
