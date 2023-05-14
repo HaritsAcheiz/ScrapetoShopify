@@ -12,6 +12,7 @@ class shopifyScraper:
     category: List[str]
 
     def fetch(self, url):
+        print(url)
         client = Client()
         response = client.get(url)
         print(response)
@@ -21,7 +22,6 @@ class shopifyScraper:
     def parser(self, html):
         tree = HTMLParser(html)
         products = tree.css('html > body > div:nth-of-type(5) > div:nth-child(2) > main > div:nth-of-type(4) > div > div')
-        print(products)
         urls = []
         for product in products:
             url = self.base_url + product.css_first('a').attributes['href']
@@ -32,27 +32,29 @@ class shopifyScraper:
         tree = HTMLParser(html)
         item = None
         items = []
-        child = tree.css('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > div:nth-of-type(2) > section > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > ul:nth-of-type(1) > li')
+        child = tree.css('html > body > div:nth-of-type(6) > div:nth-of-type(2) > main > div:nth-of-type(2) > section > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > ul:nth-of-type(1) > li')
+        print(len(child))
         for variant in child:
+            print(variant)
             try:
-                title = tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > h1').text().strip()
+                title = tree.css_first('html > body > div:nth-of-type(6) > div:nth-child(2) > main > div:nth-of-type(2) > section > div > h1').text().strip()
                 handle = title.lower().replace(' ','-')
                 # sku = tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > p').attributes['content']
                 vsku = variant.css_first('a').attributes['data-vsku']
-                img = tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > div:nth-child(4) > div:nth-child(1) > img').attributes['data-src']
+                img = tree.css_first('img#main-img').attributes['data-src']
                 # price = float(re.findall("\d+\.\d+",tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > div:nth-child(4) > div:nth-child(2) > div:nth-child(1) > p:nth-child(10) > span:nth-child(3)').text()))
                 price = float(re.findall("\d+\.\d+",variant.css_first('a').attributes['data-vprice'])[0])
-                description = f"<p>{tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section > div > div').child.html}</p>"
+                description = f"<p>{tree.css_first('html > body > div:nth-of-type(6) > div:nth-of-type(2) > main > section > div > div').child.html}</p>"
                 # vendor = '80stees'
-                product_type = tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(1)').text().strip()
+                product_type = tree.css_first('html > body > div:nth-of-type(6) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(1)').text().strip()
                 product_category = 'Apparel & Accessories > Clothing > Shirts'
                 for cat in self.category:
                     if product_type in cat:
                         product_category = cat
                         break
                 tags = "shirt, hoodies, sweaters, sweatshirts, t-shirts"
-                color = tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(2)').text().strip()
-                gender = tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(2) > span:nth-of-type(1)').text().strip()
+                color = tree.css_first('html > body > div:nth-of-type(6) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(2)').text().strip()
+                gender = tree.css_first('html > body > div:nth-of-type(6) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(2) > span:nth-of-type(1)').text().strip()
                 size = variant.css_first('a').text().strip()
                 item = {
                     'Handle':handle, 'Title':title, 'Body(HTML)':description, 'Vendor':'My Store', 'Product Category':product_category,
@@ -71,7 +73,7 @@ class shopifyScraper:
                     'Google Shopping / Custom Label 4':'', 'Variant Image':'', 'Variant Weight Unit':'g',
                     'Variant Tax Code':'', 'Cost per item':'', 'Price / International':price, 'Compare At Price / International':'',
                     'Status':'active'}
-                items.append(item)
+                items.append(item.copy())
             except Exception as e:
                 print(e)
         return items
@@ -79,7 +81,11 @@ class shopifyScraper:
     def to_csv(self, datas, filename):
         try:
             for data in datas:
+                print(f'-------------------------------data-------------------------------------------')
+                print(data)
                 for child in data:
+                    print(f'-------------------------------data-------------------------------------------')
+                    print(child)
                     try:
                         file_exists = os.path.isfile(filename)
                         with open(filename, 'a', encoding='utf-16') as f:
@@ -119,13 +125,10 @@ if __name__ == '__main__':
     cat_list = cat.split("\n")
     scraper = shopifyScraper(base_url=base_url, category=cat_list)
     urls = [f'https://www.80stees.com/a/search?q=christmas&page={str(page)}' for page in range(1,2)]
-    print(urls)
     htmls = [scraper.fetch(url) for url in urls]
     detail_urls = []
     for html in htmls:
-        print(html)
         detail_urls.extend(scraper.parser(html))
-    print(detail_urls)
-    detail_htmls = [scraper.fetch(url) for url in detail_urls]
-    data = [scraper.detail_parser(html) for html in detail_htmls]
+    detail_htmls = [scraper.fetch(url) for url in detail_urls[0:2]]
+    data = [scraper.detail_parser(html) for html in detail_htmls[0:2]]
     scraper.to_csv(data, filename='result.csv')
