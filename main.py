@@ -33,9 +33,7 @@ class shopifyScraper:
         item = None
         items = []
         child = tree.css('html > body > div:nth-of-type(6) > div:nth-of-type(2) > main > div:nth-of-type(2) > section > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > ul:nth-of-type(1) > li')
-        print(len(child))
         for variant in child:
-            print(variant)
             try:
                 title = tree.css_first('html > body > div:nth-of-type(6) > div:nth-child(2) > main > div:nth-of-type(2) > section > div > h1').text().strip()
                 handle = title.lower().replace(' ','-')
@@ -81,11 +79,7 @@ class shopifyScraper:
     def to_csv(self, datas, filename):
         try:
             for data in datas:
-                print(f'-------------------------------data-------------------------------------------')
-                print(data)
                 for child in data:
-                    print(f'-------------------------------data-------------------------------------------')
-                    print(child)
                     try:
                         file_exists = os.path.isfile(filename)
                         with open(filename, 'a', encoding='utf-16') as f:
@@ -124,11 +118,11 @@ if __name__ == '__main__':
     cat_file.close()
     cat_list = cat.split("\n")
     scraper = shopifyScraper(base_url=base_url, category=cat_list)
-    urls = [f'https://www.80stees.com/a/search?q=christmas&page={str(page)}' for page in range(1,2)]
+    urls = [f'https://www.80stees.com/a/search?q=christmas&page={str(page)}' for page in range(1,5)]
     htmls = [scraper.fetch(url) for url in urls]
     detail_urls = []
     for html in htmls:
         detail_urls.extend(scraper.parser(html))
-    detail_htmls = [scraper.fetch(url) for url in detail_urls[0:2]]
-    data = [scraper.detail_parser(html) for html in detail_htmls[0:2]]
+    detail_htmls = [scraper.fetch(url) for url in detail_urls]
+    data = [scraper.detail_parser(html) for html in detail_htmls]
     scraper.to_csv(data, filename='result.csv')
