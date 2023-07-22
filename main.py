@@ -1,3 +1,4 @@
+import json
 from httpx import Client
 from dataclasses import dataclass
 from selectolax.parser import HTMLParser
@@ -19,7 +20,7 @@ class shopifyScraper:
 
     def parser(self, html):
         tree = HTMLParser(html)
-        products = tree.css('html > body > div:nth-child(6) > div:nth-child(2) > main > div:nth-child(5) > div > div')
+        products = tree.css('div#collection-content > div > div')
         urls = []
         for product in products:
             url = self.base_url + product.css_first('a').attributes['href']
@@ -31,48 +32,182 @@ class shopifyScraper:
         item = None
         items = []
         child = tree.css('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > div:nth-of-type(2) > section > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > ul:nth-of-type(1) > li')
-        for variant in child:
+        for i, variant in enumerate(child):
             try:
-                title = tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > h1').text().strip()
-                handle = title.lower().replace(' ','-')
-                # sku = tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > p').attributes['content']
-                vsku = variant.css_first('a').attributes['data-vsku']
-                img = tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > div:nth-child(4) > div:nth-child(1) > img').attributes['data-src']
-                # price = float(re.findall("\d+\.\d+",tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > div:nth-child(4) > div:nth-child(2) > div:nth-child(1) > p:nth-child(10) > span:nth-child(3)').text()))
-                price = float(re.findall("\d+\.\d+",variant.css_first('a').attributes['data-vprice'])[0])
+                title = str(tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > h1').text().strip())
+                handle = str(tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > p').attributes['content'])
+                vsku = str(variant.css_first('a').attributes['data-vsku'])
+                img = f"https:{tree.css_first('html > body > div:nth-child(7) > div:nth-child(2) > main > div:nth-child(9) > section > div > div:nth-child(4) > div:nth-child(1) > img').attributes['data-src']}"
+                price = float(re.findall(r"\d+\.\d+",variant.css_first('a').attributes['data-vprice'])[0])
                 description = f"<p>{tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section > div > div').child.html}</p>"
-                # vendor = '80stees'
-                product_type = tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(1)').text().strip()
-                product_category = 'Apparel & Accessories > Clothing > Shirts'
-                for cat in self.category:
-                    if product_type in cat:
-                        product_category = cat
-                        break
+                product_type = str(tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(1)').text().strip())
+                product_category = 'Apparel & Accessories > Clothing'
+                # for cat in self.category:
+                #     if product_type in cat:
+                #         product_category = cat
+                #         break
                 tags = "shirt, hoodies, sweaters, sweatshirts, t-shirts"
-                color = tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(2)').text().strip()
-                gender = tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(2) > span:nth-of-type(1)').text().strip()
-                size = variant.css_first('a').text().strip()
-                item = {
-                    'Handle':handle, 'Title':title, 'Body(HTML)':description, 'Vendor':'My Store', 'Product Category':product_category,
-                    'Type':product_type, 'Tags':tags, 'Published':True, 'Option1 Name':'color', 'Option1 Value':color, 'Option2 Name':'gender',
-                    'Option2 Value':gender, 'Option3 Name':'size', 'Option3 Value':size, 'Variant SKU':vsku, 'Variant Grams':200,
-                    'Variant Inventory Tracker':'', 'Variant Inventory Qty':10, 'Variant Inventory Policy':'deny',
-                    'Variant Fulfillment Service':'manual', 'Variant Price':price, 'Variant Compare At Price':price,
-                    'Variant Requires Shipping':True, 'Variant Taxable':True, 'Variant Barcode':'', 'Image Src':img,
-                    'Image Position':1, 'Image Alt Text':'', 'Gift Card':True, 'SEO Title':'', 'SEO Description':'',
-                    'Google Shopping / Google Product Category':product_category, 'Google Shopping / Gender':gender,
-                    'Google Shopping / Age Group':'', 'Google Shopping / MPN':'',
-                    'Google Shopping / AdWords Grouping':'', 'Google Shopping / AdWords Labels':'',
-                    'Google Shopping / Condition':'New', 'Google Shopping / Custom Product':'',
-                    'Google Shopping / Custom Label 0':'', 'Google Shopping / Custom Label 1':'',
-                    'Google Shopping / Custom Label 2':'', 'Google Shopping / Custom Label 3':'',
-                    'Google Shopping / Custom Label 4':'', 'Variant Image':'', 'Variant Weight Unit':'g',
-                    'Variant Tax Code':'', 'Cost per item':'', 'Price / International':price, 'Compare At Price / International':'',
-                    'Status':'active'}
-                items.append(item)
+                color = str(tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(1) > span:nth-of-type(2)').text().strip())
+                gender = str(tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(2) > span:nth-of-type(1)').text().strip())
+                size = str(variant.css_first('a').text().strip())
+                seo_title = str(''.join(re.findall(r"[a-zA-Z0-9,. &]", tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(1) > div > div').text())[:75]))
+                seo_desc = str(''.join(re.findall(r"[a-zA-Z0-9,. &]", tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(1) > div > div').text())[:320]))
+                if gender == 'Children':
+                    age_group = 'Kids'
+                else:
+                    age_group = 'Adult'
+                adwords_label = str(tree.css_first('html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(3) > span:nth-of-type(1)').text().strip())
+                if i == 0:
+                    item = {
+                        'Handle':handle, 'Title':title, 'Body (HTML)':description, 'Vendor':'My Store', 'Product Category':product_category,
+                        'Type':product_type, 'Tags':tags, 'Published':True, 'Option1 Name':'color', 'Option1 Value':color, 'Option2 Name':'gender',
+                        'Option2 Value':gender, 'Option3 Name':'size', 'Option3 Value':size, 'Variant SKU':vsku, 'Variant Grams':200,
+                        'Variant Inventory Tracker':'shopify', 'Variant Inventory Qty':10, 'Variant Inventory Policy':'deny',
+                        'Variant Fulfillment Service':'manual', 'Variant Price':price, 'Variant Compare At Price':price,
+                        'Variant Requires Shipping':True, 'Variant Taxable':True, 'Variant Barcode':'', 'Image Src':img,
+                        'Image Position':1, 'Image Alt Text':'', 'Gift Card':False, 'SEO Title':seo_title, 'SEO Description':seo_desc,
+                        'Google Shopping / Google Product Category':product_category, 'Google Shopping / Gender':gender,
+                        'Google Shopping / Age Group':age_group, 'Google Shopping / MPN':'',
+                        'Google Shopping / AdWords Grouping':product_type, 'Google Shopping / AdWords Labels':adwords_label,
+                        'Google Shopping / Condition':'New', 'Google Shopping / Custom Product':False,
+                        'Google Shopping / Custom Label 0':'', 'Google Shopping / Custom Label 1':'',
+                        'Google Shopping / Custom Label 2':'', 'Google Shopping / Custom Label 3':'',
+                        'Google Shopping / Custom Label 4':'', 'Variant Image':'', 'Variant Weight Unit':'g',
+                        'Variant Tax Code':'', 'Cost per item':'', 'Price / International':'', 'Compare At Price / International':'',
+                        'Status':'active'}
+                else:
+                    item = {
+                        'Handle': handle, 'Title': '', 'Body (HTML)': '', 'Vendor': '',
+                        'Product Category': '',
+                        'Type': '', 'Tags': '', 'Published': '', 'Option1 Name': '',
+                        'Option1 Value': color, 'Option2 Name': '',
+                        'Option2 Value': gender, 'Option3 Name': '', 'Option3 Value': size, 'Variant SKU': vsku,
+                        'Variant Grams': 200,
+                        'Variant Inventory Tracker': 'shopify', 'Variant Inventory Qty': 10,
+                        'Variant Inventory Policy': 'deny',
+                        'Variant Fulfillment Service': 'manual', 'Variant Price': price,
+                        'Variant Compare At Price': price,
+                        'Variant Requires Shipping': True, 'Variant Taxable': True, 'Variant Barcode': '',
+                        'Image Src': '',
+                        'Image Position': '', 'Image Alt Text': '', 'Gift Card': '', 'SEO Title': '',
+                        'SEO Description': '',
+                        'Google Shopping / Google Product Category': '',
+                        'Google Shopping / Gender': '',
+                        'Google Shopping / Age Group': '', 'Google Shopping / MPN': '',
+                        'Google Shopping / AdWords Grouping': '',
+                        'Google Shopping / AdWords Labels': '',
+                        'Google Shopping / Condition': '', 'Google Shopping / Custom Product': '',
+                        'Google Shopping / Custom Label 0': '', 'Google Shopping / Custom Label 1': '',
+                        'Google Shopping / Custom Label 2': '', 'Google Shopping / Custom Label 3': '',
+                        'Google Shopping / Custom Label 4': '', 'Variant Image': '', 'Variant Weight Unit': 'g',
+                        'Variant Tax Code': '', 'Cost per item': '', 'Price / International': '',
+                        'Compare At Price / International': '',
+                        'Status': ''}
+                items.append(item.copy())
             except Exception as e:
                 print(e)
         return items
+
+    def detail_parser2(self, html):
+        tree = HTMLParser(html)
+        item = None
+        items = []
+        product_json = json.loads(tree.css_first('script#product_json_ld').text())
+        print(product_json)
+        for i, variant in enumerate(product_json['offers']):
+            try:
+                title = product_json['name']
+                handle = product_json['sku']
+                vsku = variant['sku']
+                img = product_json['image']
+                price = float(variant['price'])
+                description = product_json['description']
+                details = tree.css('div.productdetails > div')
+                for detail in details:
+                    if 'Product Type' in detail.text():
+                        product_type = detail.css_first('span:nth-of-type(1)').text(strip=True)
+                        color = detail.css_first('span:nth-of-type(2)').text(strip=True)
+                    elif 'Gender' in detail.text():
+                        gender = detail.css_first('span').text(strip=True)
+                product_category = 'Apparel & Accessories > Clothing'
+        #         # for cat in self.category:
+        #         #     if product_type in cat:
+        #         #         product_category = cat
+        #         #         break
+                tags = "shirt, hoodies, sweaters, sweatshirts, t-shirts"
+                size = variant['name']
+        #         seo_title = str(''.join(re.findall(r"[a-zA-Z0-9,. &]", tree.css_first(
+        #             'html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(1) > div > div').text())[
+        #                                 :75]))
+        #         seo_desc = str(''.join(re.findall(r"[a-zA-Z0-9,. &]", tree.css_first(
+        #             'html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(1) > div > div').text())[
+        #                                :320]))
+                if gender == 'Children':
+                    age_group = 'Kids'
+                else:
+                    age_group = 'Adult'
+        #         adwords_label = str(tree.css_first(
+        #             'html > body > div:nth-of-type(5) > div:nth-of-type(2) > main > section:nth-of-type(4) > div > div > div:nth-of-type(3) > span:nth-of-type(1)').text().strip())
+                if i == 0:
+                    item = {
+                        'Handle': handle, 'Title': title, 'Body (HTML)': description, 'Vendor': 'My Store',
+                        'Product Category': product_category,
+                        'Type': product_type, 'Tags': tags, 'Published': True, 'Option1 Name': 'color',
+                        'Option1 Value': color, 'Option2 Name': 'gender',
+                        'Option2 Value': gender, 'Option3 Name': 'size', 'Option3 Value': size, 'Variant SKU': vsku,
+                        'Variant Grams': 200,
+                        'Variant Inventory Tracker': 'shopify', 'Variant Inventory Qty': 10,
+                        'Variant Inventory Policy': 'deny',
+                        'Variant Fulfillment Service': 'manual', 'Variant Price': price,
+                        'Variant Compare At Price': price,
+                        'Variant Requires Shipping': True, 'Variant Taxable': True, 'Variant Barcode': '',
+                        'Image Src': img,
+                        'Image Position': 1, 'Image Alt Text': '', 'Gift Card': False, 'SEO Title': '',
+                        'SEO Description': '',
+                        'Google Shopping / Google Product Category': product_category,
+                        'Google Shopping / Gender': gender,
+                        'Google Shopping / Age Group': age_group, 'Google Shopping / MPN': '',
+                        'Google Shopping / AdWords Grouping': product_type,
+                        'Google Shopping / AdWords Labels': '',
+                        'Google Shopping / Condition': 'New', 'Google Shopping / Custom Product': False,
+                        'Google Shopping / Custom Label 0': '', 'Google Shopping / Custom Label 1': '',
+                        'Google Shopping / Custom Label 2': '', 'Google Shopping / Custom Label 3': '',
+                        'Google Shopping / Custom Label 4': '', 'Variant Image': '', 'Variant Weight Unit': 'g',
+                        'Variant Tax Code': '', 'Cost per item': '', 'Price / International': '',
+                        'Compare At Price / International': '',
+                        'Status': 'active'}
+                else:
+                    item = {
+                        'Handle': handle, 'Title': '', 'Body (HTML)': '', 'Vendor': '',
+                        'Product Category': '',
+                        'Type': '', 'Tags': '', 'Published': '', 'Option1 Name': '',
+                        'Option1 Value': color, 'Option2 Name': '',
+                        'Option2 Value': gender, 'Option3 Name': '', 'Option3 Value': size, 'Variant SKU': vsku,
+                        'Variant Grams': 200,
+                        'Variant Inventory Tracker': 'shopify', 'Variant Inventory Qty': 10,
+                        'Variant Inventory Policy': 'deny',
+                        'Variant Fulfillment Service': 'manual', 'Variant Price': price,
+                        'Variant Compare At Price': price,
+                        'Variant Requires Shipping': True, 'Variant Taxable': True, 'Variant Barcode': '',
+                        'Image Src': '',
+                        'Image Position': '', 'Image Alt Text': '', 'Gift Card': '', 'SEO Title': '',
+                        'SEO Description': '',
+                        'Google Shopping / Google Product Category': '',
+                        'Google Shopping / Gender': '',
+                        'Google Shopping / Age Group': '', 'Google Shopping / MPN': '',
+                        'Google Shopping / AdWords Grouping': '',
+                        'Google Shopping / AdWords Labels': '',
+                        'Google Shopping / Condition': '', 'Google Shopping / Custom Product': '',
+                        'Google Shopping / Custom Label 0': '', 'Google Shopping / Custom Label 1': '',
+                        'Google Shopping / Custom Label 2': '', 'Google Shopping / Custom Label 3': '',
+                        'Google Shopping / Custom Label 4': '', 'Variant Image': '', 'Variant Weight Unit': 'g',
+                        'Variant Tax Code': '', 'Cost per item': '', 'Price / International': '',
+                        'Compare At Price / International': '',
+                        'Status': ''}
+                items.append(item.copy())
+            except Exception as e:
+                print(e)
+        # return items
 
     def to_csv(self, datas, filename):
         try:
@@ -80,8 +215,8 @@ class shopifyScraper:
                 for child in data:
                     try:
                         file_exists = os.path.isfile(filename)
-                        with open(filename, 'a', encoding='utf-16') as f:
-                            headers = ['Handle', 'Title', 'Body(HTML)', 'Vendor', 'Product Category', 'Type', 'Tags',
+                        with open(filename, 'a', newline='', encoding='utf-8') as f:
+                            headers = ['Handle', 'Title', 'Body (HTML)', 'Vendor', 'Product Category', 'Type', 'Tags',
                                        'Published', 'Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value',
                                        'Option3 Name', 'Option3 Value', 'Variant SKU', 'Variant Grams', 'Variant Inventory Tracker',
                                        'Variant Inventory Qty', 'Variant Inventory Policy', 'Variant Fulfillment Service',
@@ -96,7 +231,7 @@ class shopifyScraper:
                                        'Google Shopping / Custom Label 4', 'Variant Image', 'Variant Weight Unit',
                                        'Variant Tax Code', 'Cost per item', 'Price / International', 'Compare At Price / International',
                                        'Status']
-                            writer = csv.DictWriter(f, delimiter=',', lineterminator='\n', fieldnames=headers)
+                            writer = csv.DictWriter(f, delimiter=',', fieldnames=headers)
                             if not file_exists:
                                 writer.writeheader()
                             if child != None:
@@ -106,7 +241,8 @@ class shopifyScraper:
                     except Exception as e:
                         print(e)
                         continue
-        except:
+        except Exception as e:
+            print(e)
             pass
 
 if __name__ == '__main__':
@@ -116,11 +252,11 @@ if __name__ == '__main__':
     cat_file.close()
     cat_list = cat.split("\n")
     scraper = shopifyScraper(base_url=base_url, category=cat_list)
-    urls = [f'https://www.80stees.com/a/search?q=christmas&page={str(page)}' for page in range(1,2)]
+    urls = [f'https://www.80stees.com/a/search?q=christmas&page={str(page)}' for page in range(1,3)]
     htmls = [scraper.fetch(url) for url in urls]
     detail_urls = []
     for html in htmls:
         detail_urls.extend(scraper.parser(html))
     detail_htmls = [scraper.fetch(url) for url in detail_urls]
-    data = [scraper.detail_parser(html) for html in detail_htmls]
+    data = [scraper.detail_parser2(html) for html in detail_htmls]
     scraper.to_csv(data, filename='result.csv')
